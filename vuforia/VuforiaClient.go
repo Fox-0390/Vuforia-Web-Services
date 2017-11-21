@@ -7,15 +7,16 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"log"
 	"net/http"
 	"net/url"
 	"path"
 	"strings"
 	"time"
-	"encoding/json"
-	"io/ioutil"
 )
 
 type VuforiaClient struct {
@@ -72,7 +73,7 @@ func (client *VuforiaClient) autheticatedResponse(request *http.Request) ([]byte
 	fmt.Println(string(responseData))
 
 	str := string(responseData)
-	str = strings.Trim(str,"")
+	str = strings.Trim(str, "")
 
 	defer response.Body.Close()
 	return responseData, nil
@@ -104,20 +105,18 @@ func (client *VuforiaClient) TargetIds() (resultItems []string, err error) {
 	request, err := http.NewRequest(http.MethodGet, url.String(), buffer)
 	responseBody, err := client.autheticatedResponse(request)
 
-
-
 	fmt.Println(string(responseBody))
 	resultModel := ResultItemsModel{}
-	err = json.Unmarshal(responseBody,&resultModel)
+	err = json.Unmarshal(responseBody, &resultModel)
 
-	if 	err != nil{
+	if err != nil {
 		return
 	}
 	resultItems = resultModel.Results
 	return
 }
 
-func (client *VuforiaClient) GetSummaryItem(id string)(item SummaryCloudItem,err error){
+func (client *VuforiaClient) GetSummaryItem(id string) (item SummaryCloudItem, err error) {
 	url, err := url.Parse(client.Host)
 	if err != nil {
 		log.Println(err.Error())
@@ -127,14 +126,13 @@ func (client *VuforiaClient) GetSummaryItem(id string)(item SummaryCloudItem,err
 	url.Path = path.Join(url.Path, id)
 
 	request, err := http.NewRequest(http.MethodGet, url.String(), buffer)
-	a,err := client.autheticatedResponse(request)
+	a, err := client.autheticatedResponse(request)
 
-	err = json.Unmarshal(a,&item)
+	err = json.Unmarshal(a, &item)
 	return
 }
 
-
-func (client *VuforiaClient) GetItem(id string)(item CloudItem,err error){
+func (client *VuforiaClient) GetItem(id string) (item CloudItem, err error) {
 	url, err := url.Parse(client.Host)
 	if err != nil {
 		log.Println(err.Error())
@@ -144,13 +142,13 @@ func (client *VuforiaClient) GetItem(id string)(item CloudItem,err error){
 	url.Path = path.Join(url.Path, id)
 
 	request, err := http.NewRequest(http.MethodGet, url.String(), buffer)
-	a,err := client.autheticatedResponse(request)
+	a, err := client.autheticatedResponse(request)
 
-	err = json.Unmarshal(a,&item)
+	err = json.Unmarshal(a, &item)
 	return
 }
 
-func (client *VuforiaClient) UpdateItem(targetId string,name string,width float32,imageBase64 string,activeFlag bool,metaBase64 string)(isOk bool,err error){
+func (client *VuforiaClient) UpdateItem(targetId string, name string, width float32, imageBase64 string, activeFlag bool, metaBase64 string) (isOk bool, err error) {
 	url, err := url.Parse(client.Host)
 	if err != nil {
 		isOk = false
@@ -160,12 +158,12 @@ func (client *VuforiaClient) UpdateItem(targetId string,name string,width float3
 	url.Path = path.Join(url.Path, "targets")
 	url.Path = path.Join(url.Path, targetId)
 
-	newItem,err := createCloudItem(name,width,imageBase64,activeFlag,metaBase64)
+	newItem, err := createCloudItem(name, width, imageBase64, activeFlag, metaBase64)
 	if err != nil {
 		log.Println(err.Error())
 	}
 
-	bytesData,err := json.Marshal(newItem)
+	bytesData, err := json.Marshal(newItem)
 	if err != nil {
 		isOk = false
 		log.Println(err.Error())
@@ -173,8 +171,8 @@ func (client *VuforiaClient) UpdateItem(targetId string,name string,width float3
 	}
 
 	request, err := http.NewRequest(http.MethodPut, url.String(), bytes.NewBuffer(bytesData))
-	request.Header.Add("Content-Type","application/json")
-	_,err = client.autheticatedResponse(request)
+	request.Header.Add("Content-Type", "application/json")
+	_, err = client.autheticatedResponse(request)
 	if err != nil {
 		isOk = false
 		log.Println(err.Error())
@@ -184,43 +182,42 @@ func (client *VuforiaClient) UpdateItem(targetId string,name string,width float3
 	return
 }
 
-
-func (client *VuforiaClient) AddItem(name string,width float32,imageBase64 string,activeFlag bool,metaBase64 string)(targetId string,isSuccess bool,err error){
+func (client *VuforiaClient) AddItem(name string, width float32, imageBase64 string, activeFlag bool, metaBase64 string) (targetId string, isSuccess bool, err error) {
 	url, err := url.Parse(client.Host)
 	if err != nil {
 		log.Println(err.Error())
 	}
 
-	newItem,err := createCloudItem(name,width,imageBase64,activeFlag,metaBase64)
+	newItem, err := createCloudItem(name, width, imageBase64, activeFlag, metaBase64)
 
-	if err != nil{
-		return "",false,err
+	if err != nil {
+		return "", false, err
 	}
-	bytesData,err := json.Marshal(newItem)
-	if err != nil{
-		return "",false,err
+	bytesData, err := json.Marshal(newItem)
+	if err != nil {
+		return "", false, err
 	}
 
 	url.Path = path.Join(url.Path, "targets")
 
 	request, err := http.NewRequest(http.MethodPost, url.String(), bytes.NewBuffer(bytesData))
-	if err != nil{
-		return "",false,err
+	if err != nil {
+		return "", false, err
 	}
 
-	request.Header.Add("Content-Type","application/json")
-	bodyData,err := client.autheticatedResponse(request)
-	if err != nil{
-		return "",false,err
+	request.Header.Add("Content-Type", "application/json")
+	bodyData, err := client.autheticatedResponse(request)
+	if err != nil {
+		return "", false, err
 	}
 
 	responseModel := &ResultAddModel{}
-	err = json.Unmarshal(bodyData,&responseModel)
-	if err != nil{
-		return "",false,err
+	err = json.Unmarshal(bodyData, &responseModel)
+	if err != nil {
+		return "", false, err
 	}
 
-	return responseModel.TargetId,true,nil
+	return responseModel.TargetId, true, nil
 }
 
 func (client *VuforiaClient) DeleteId(id string) {
@@ -233,7 +230,7 @@ func (client *VuforiaClient) DeleteId(id string) {
 	url.Path = path.Join(url.Path, id)
 
 	request, err := http.NewRequest(http.MethodDelete, url.String(), buffer)
-	a,err := client.autheticatedResponse(request)
+	a, err := client.autheticatedResponse(request)
 	_ = a
 }
 
@@ -243,21 +240,25 @@ func calculateContentMd5(r *http.Request) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
-	bb,err := ioutil.ReadAll(dataReader)
+	defer dataReader.Close()
 	hasher := md5.New()
-	hasher.Write(bb)
-	resultHash := hex.EncodeToString(hasher.Sum(nil))
-	return resultHash, nil
+	var returnMD5String string
+	if _, err := io.Copy(hasher, dataReader); err != nil {
+		return returnMD5String, err
+	}
+
+	returnMD5String = hex.EncodeToString(hasher.Sum(nil))
+
+	return returnMD5String, nil
 }
 
-func createCloudItem(name string,width float32,imageBase64 string,activeFlag bool,metaBase64 string)(*CloudItemNew,error){
+func createCloudItem(name string, width float32, imageBase64 string, activeFlag bool, metaBase64 string) (*CloudItemNew, error) {
 	newItem := CloudItemNew{
-		Name:name,
-		Width: width,
-		Image:imageBase64,
-		Active_flag:activeFlag,
-		Application_metadata:metaBase64,
+		Name:                 name,
+		Width:                width,
+		Image:                imageBase64,
+		Active_flag:          activeFlag,
+		Application_metadata: metaBase64,
 	}
-	return &newItem,nil
+	return &newItem, nil
 }
